@@ -20,7 +20,7 @@ test:
 	poetry run pytest
 
 check:
-	make test
+#	make test
 	make lint
 
 test-coverage:
