@@ -1,0 +1,50 @@
+{% extends "index.html" %}
+{% block content %}
+<h1>Website: {{ site.name }}</h1>
+<div class="table-responsive">
+  <table class="table table-bordered table-hover text-nowrap" data-test="url">
+    <tbody>
+    <tr>
+      <td>ID</td>
+      <td>{{ site.id }}</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>{{ site.name }}</td>
+    </tr>
+    <tr>
+      <td>Created at</td>
+      <td>{{ site.created_at.strftime('%Y-%m-%d') }}</td>
+    </tr>
+    </tbody>
+  </table>
+</div>
+<h2 class="mt-5 mb-3">Checks</h2>
+<form method="post" action="{{ url_for('get_checks', id=site.id) }}">
+  <input type="submit" class="btn btn-primary" value="Make check">
+</form>
+<div>
+  <table class="table table-bordered table-hover mt-2" data-test="checks">
+    <tbody>
+    <tr>
+      <th>ID</th>
+      <th>Response code</th>
+      <th>h1</th>
+      <th>title</th>
+      <th>description</th>
+      <th>Created at</th>
+    </tr>
+    {% for check in checks %}
+    <tr>
+      <td>{{ check.id }}</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td>{{ check.created_at.strftime('%Y-%m-%d') }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
