@@ -6,7 +6,7 @@ import psycopg2
 from psycopg2.extras import NamedTupleCursor
 from datetime import datetime
 from urllib.parse import urlparse
-from validators import url as validate
+from page_analyzer.url import validate_url
 
 
 app = Flask(__name__)
@@ -18,7 +18,7 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 conn = psycopg2.connect(DATABASE_URL)
 
 
-def take_domain(url):
+def get_domain(url):
     url = urlparse(url)
     return url._replace(
         path='',
@@ -37,10 +37,8 @@ def get_urls():
     with conn:
         with conn.cursor(cursor_factory=NamedTupleCursor) as curs:
             curs.execute("""SELECT
-                                urls.id, urls.name,
-                                MAX(url_checks.created_at) AS created_at
-                                FROM urls LEFT JOIN url_checks
-                                ON urls.id = url_checks.url_id
+                                urls.id, urls.name, created_at
+                                FROM urls
                                 GROUP BY urls.id
                                 ORDER BY urls.id;""")
             urls = curs.fetchall()
@@ -49,15 +47,16 @@ def get_urls():
 
 @app.post('/urls')
 def add_url():
-    data = request.form.to_dict()
-    url = take_domain(data['url'])
-    if not validate(url) or len(url) > 255:
-        messages = get_flashed_messages(with_categories=True)
-        flash('Incorrect URL', 'alert-danger')
-        return render_template('index.html', messages=messages, url=url), 422
+    raw_url = request.form.get('url')
+    alerts = validate_url(raw_url)
+    if alerts:
+        for alert in alerts:
+            flash(alert, 'alert-danger')
+        return render_template('index.html', url=raw_url), 422
     try:
         with conn:
             with conn.cursor() as curs:
+                url = get_domain(raw_url)
                 curs.execute(
                     """
                     INSERT INTO urls (name, created_at)
@@ -66,12 +65,24 @@ def add_url():
                     """,
                     {'name': url, 'created_at': datetime.now()})
                 id = curs.fetchone().id
-                flash('Website successfully added', 'alert-success')
+                flash('Страница успешно добавлена', 'alert-success')
                 return redirect(url_for('get_url', id=id))
     except psycopg2.errors.UniqueViolation:
         with conn:
             with conn.cursor() as curs:
                 curs.execute("SELECT id FROM urls WHERE name=(%s);", (url,))
                 id = curs.fetchone().id
-                flash('Website already exist', 'alert-info')
+                flash('Страница уже существует', 'alert-info')
                 return redirect(url_for('get_url', id=id))
+
+
+@app.get('/urls/<int:id>')
+def get_url(id):
+    with conn:
+        with conn.cursor(cursor_factory=NamedTupleCursor) as curs:
+            curs.execute("SELECT * FROM urls WHERE id=(%s);", (id,))
+            site = curs.fetchone()
+            messages = get_flashed_messages(with_categories=True)
+            return render_template('url.html',
+                                   site=site,
+                                   messages=messages)

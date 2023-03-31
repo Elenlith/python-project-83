@@ -177,6 +177,14 @@ testing = ["build[virtualenv]", "filelock (>=3.4.0)", "flake8 (<5)", "flake8-202
 testing-integration = ["build[virtualenv]", "filelock (>=3.4.0)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "pytest", "pytest-enabler", "pytest-xdist", "tomli", "virtualenv (>=13.0.0)", "wheel"]
 
 [[package]]
+name = "validate"
+version = "1.0.1"
+description = "Config file reading, writing, and validation."
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "validators"
 version = "0.20.0"
 description = "Python Data Validation for Humans™."
@@ -219,7 +227,7 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8.1,<4.0"
-content-hash = "e3e5bea8c934feae312e2abf628dae88c8ce79517f8a6d25781bf4ecca654384"
+content-hash = "5f28da9512faa169cdcd775de4af9d2fcd14158f3dd471aecea51e41abf37e5a"
 
 [metadata.files]
 click = [
@@ -402,6 +410,9 @@ python-dotenv = [
 setuptools = [
     {file = "setuptools-67.6.0-py3-none-any.whl", hash = "sha256:b78aaa36f6b90a074c1fa651168723acbf45d14cb1196b6f02c0fd07f17623b2"},
     {file = "setuptools-67.6.0.tar.gz", hash = "sha256:2ee892cd5f29f3373097f5a814697e397cf3ce313616df0af11231e2ad118077"},
+]
+validate = [
+    {file = "validate-1.0.1.tar.gz", hash = "sha256:21c57ea4fe5282d970d7df2469ffe32a3ee878d7af1a6e1f87ba196e6c04f952"},
 ]
 validators = [
     {file = "validators-0.20.0.tar.gz", hash = "sha256:24148ce4e64100a2d5e267233e23e7afeb55316b47d30faae7eb6e7292bc226a"},
