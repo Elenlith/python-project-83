@@ -18,13 +18,9 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 conn = psycopg2.connect(DATABASE_URL)
 
 
-def get_domain(url):
-    url = urlparse(url)
-    return url._replace(
-        path='',
-        params='',
-        query='',
-        fragment='').geturl()
+def get_domain(raw_url):
+    url = urlparse(raw_url)
+    return f"{url.scheme}://{url.netloc}"
 
 
 @app.route('/')
@@ -37,7 +33,7 @@ def get_urls():
     with conn:
         with conn.cursor(cursor_factory=NamedTupleCursor) as curs:
             curs.execute("""SELECT
-                                urls.id, urls.name, created_at
+                                urls.id, urls.name, urls.created_at
                                 FROM urls
                                 GROUP BY urls.id
                                 ORDER BY urls.id;""")
@@ -48,6 +44,7 @@ def get_urls():
 @app.post('/urls')
 def add_url():
     raw_url = request.form.get('url')
+    url = get_domain(raw_url)
     alerts = validate_url(raw_url)
     if alerts:
         for alert in alerts:
@@ -56,7 +53,6 @@ def add_url():
     try:
         with conn:
             with conn.cursor() as curs:
-                url = get_domain(raw_url)
                 curs.execute(
                     """
                     INSERT INTO urls (name, created_at)
@@ -64,14 +60,14 @@ def add_url():
                     RETURNING id;
                     """,
                     {'name': url, 'created_at': datetime.now()})
-                id = curs.fetchone().id
+                id = curs.fetchone()[0]
                 flash('Страница успешно добавлена', 'alert-success')
                 return redirect(url_for('get_url', id=id))
     except psycopg2.errors.UniqueViolation:
         with conn:
             with conn.cursor() as curs:
                 curs.execute("SELECT id FROM urls WHERE name=(%s);", (url,))
-                id = curs.fetchone().id
+                id = curs.fetchone()[0]
                 flash('Страница уже существует', 'alert-info')
                 return redirect(url_for('get_url', id=id))
 
