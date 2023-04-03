@@ -15,7 +15,10 @@ app = Flask(__name__)
 load_dotenv()
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
-conn = psycopg2.connect(DATABASE_URL)
+
+
+def establish_connection():
+    return psycopg2.connect(DATABASE_URL)
 
 
 def get_domain(raw_url):
@@ -28,15 +31,16 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/urls')
-def get_urls():
+@app.get('/urls')
+def show_urls_list():
+    conn = establish_connection()
     with conn:
         with conn.cursor(cursor_factory=NamedTupleCursor) as curs:
             curs.execute("""SELECT
-                                urls.id, urls.name, urls.created_at
-                                FROM urls
-                                GROUP BY urls.id
-                                ORDER BY urls.id;""")
+                         urls.id, urls.name, urls.created_at
+                         FROM urls
+                         GROUP BY urls.id
+                         ORDER BY urls.id;""")
             urls = curs.fetchall()
     return render_template('urls_list.html', urls=urls)
 
@@ -50,6 +54,7 @@ def add_url():
         for alert in alerts:
             flash(alert, 'alert-danger')
         return render_template('index.html', url=raw_url), 422
+    conn = establish_connection()
     try:
         with conn:
             with conn.cursor() as curs:
@@ -62,23 +67,24 @@ def add_url():
                     {'name': url, 'created_at': datetime.now()})
                 id = curs.fetchone()[0]
                 flash('Страница успешно добавлена', 'alert-success')
-                return redirect(url_for('get_url', id=id))
+                return redirect(url_for('show_specific_url', id=id))
     except psycopg2.errors.UniqueViolation:
         with conn:
             with conn.cursor() as curs:
                 curs.execute("SELECT id FROM urls WHERE name=(%s);", (url,))
                 id = curs.fetchone()[0]
                 flash('Страница уже существует', 'alert-info')
-                return redirect(url_for('get_url', id=id))
+                return redirect(url_for('show_specific_url', id=id))
 
 
 @app.get('/urls/<int:id>')
-def get_url(id):
+def show_specific_url(id):
+    conn = establish_connection()
     with conn:
         with conn.cursor(cursor_factory=NamedTupleCursor) as curs:
             curs.execute("SELECT * FROM urls WHERE id=(%s);", (id,))
             site = curs.fetchone()
             messages = get_flashed_messages(with_categories=True)
-            return render_template('url.html',
-                                   site=site,
-                                   messages=messages)
+    return render_template('url.html',
+                           site=site,
+                           messages=messages)
