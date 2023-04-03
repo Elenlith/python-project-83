@@ -40,7 +40,7 @@ def show_urls_list():
                          urls.id, urls.name, urls.created_at
                          FROM urls
                          GROUP BY urls.id
-                         ORDER BY urls.id;""")
+                         ORDER BY urls.id DESC;""")
             urls = curs.fetchall()
     return render_template('urls_list.html', urls=urls)
 
