@@ -1,9 +1,9 @@
 import os
-from flask import Flask, render_template, flash, get_flashed_messages, \
+from flask import Flask, render_template, flash, \
     request, redirect, url_for
 from dotenv import load_dotenv
 import psycopg2
-from psycopg2.extras import NamedTupleCursor, RealDictCursor
+from psycopg2.extras import RealDictCursor
 from datetime import datetime
 from urllib.parse import urlparse
 from page_analyzer.url import validate_url
@@ -88,7 +88,8 @@ def show_specific_url(id):
         with conn.cursor(cursor_factory=RealDictCursor) as curs:
             curs.execute("SELECT * FROM urls WHERE id=(%s);", (id,))
             site = curs.fetchone()
-            curs.execute("SELECT * FROM url_checks WHERE url_id=(%s) ORDER BY id DESC;", (id,))
+            curs.execute("""SELECT * FROM url_checks
+                         WHERE url_id=(%s) ORDER BY id DESC;""", (id,))
             checks = curs.fetchall()
             return render_template('url.html',
                                    site=site,
