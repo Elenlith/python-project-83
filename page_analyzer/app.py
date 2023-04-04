@@ -3,7 +3,7 @@ from flask import Flask, render_template, flash, get_flashed_messages, \
     request, redirect, url_for
 from dotenv import load_dotenv
 import psycopg2
-from psycopg2.extras import NamedTupleCursor
+from psycopg2.extras import NamedTupleCursor, RealDictCursor
 from datetime import datetime
 from urllib.parse import urlparse
 from page_analyzer.url import validate_url
@@ -35,11 +35,15 @@ def index():
 def show_urls_list():
     conn = establish_connection()
     with conn:
-        with conn.cursor(cursor_factory=NamedTupleCursor) as curs:
+        with conn.cursor(cursor_factory=RealDictCursor) as curs:
             curs.execute("""SELECT
-                         urls.id, urls.name, urls.created_at
-                         FROM urls
-                         GROUP BY urls.id
+                         urls.id, urls.name,
+                         url_checks.created_at
+                         FROM urls LEFT JOIN url_checks
+                         ON urls.id = url_checks.url_id
+                         AND url_checks.created_at = (SELECT
+                         MAX(created_at) FROM url_checks
+                         WHERE url_id = urls.id)
                          ORDER BY urls.id DESC;""")
             urls = curs.fetchall()
     return render_template('urls_list.html', urls=urls)
@@ -81,10 +85,26 @@ def add_url():
 def show_specific_url(id):
     conn = establish_connection()
     with conn:
-        with conn.cursor(cursor_factory=NamedTupleCursor) as curs:
+        with conn.cursor(cursor_factory=RealDictCursor) as curs:
             curs.execute("SELECT * FROM urls WHERE id=(%s);", (id,))
             site = curs.fetchone()
-            messages = get_flashed_messages(with_categories=True)
-    return render_template('url.html',
-                           site=site,
-                           messages=messages)
+            curs.execute("SELECT * FROM url_checks WHERE url_id=(%s) ORDER BY id DESC;", (id,))
+            checks = curs.fetchall()
+            return render_template('url.html',
+                                   site=site,
+                                   checks=checks)
+
+
+@app.post('/urls/<int:id>/checks')
+def check_url(id):
+    conn = establish_connection()
+    with conn:
+        with conn.cursor() as curs:
+            curs.execute(
+                """
+                INSERT INTO url_checks (url_id, created_at)
+                VALUES (%(url_id)s, %(created_at)s);
+                """,
+                {'url_id': id, 'created_at': datetime.now()})
+            flash('Страница успешно проверена', 'alert-success')
+            return redirect(url_for('show_specific_url', id=id))
