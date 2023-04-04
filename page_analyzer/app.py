@@ -7,6 +7,7 @@ from psycopg2.extras import RealDictCursor
 from datetime import datetime
 from urllib.parse import urlparse
 from page_analyzer.url import validate_url
+import requests
 
 
 app = Flask(__name__)
@@ -38,6 +39,7 @@ def show_urls_list():
         with conn.cursor(cursor_factory=RealDictCursor) as curs:
             curs.execute("""SELECT
                          urls.id, urls.name,
+                         url_checks.status_code,
                          url_checks.created_at
                          FROM urls LEFT JOIN url_checks
                          ON urls.id = url_checks.url_id
@@ -101,11 +103,21 @@ def check_url(id):
     conn = establish_connection()
     with conn:
         with conn.cursor() as curs:
-            curs.execute(
-                """
-                INSERT INTO url_checks (url_id, created_at)
-                VALUES (%(url_id)s, %(created_at)s);
-                """,
-                {'url_id': id, 'created_at': datetime.now()})
-            flash('Страница успешно проверена', 'alert-success')
-            return redirect(url_for('show_specific_url', id=id))
+            try:
+                curs.execute("SELECT name FROM urls WHERE id=(%s);", (id,))
+                url_to_check = curs.fetchone()[0]
+                response = requests.get(url_to_check)
+                response.raise_for_status()
+                status_code = response.status_code
+                curs.execute(
+                    """
+                    INSERT INTO url_checks (url_id, status_code, created_at)
+                    VALUES (%(url_id)s, %(status_code)s, %(created_at)s);
+                    """,
+                    {'url_id': id, 'status_code': status_code,
+                     'created_at': datetime.now()})
+                flash('Страница успешно проверена', 'alert-success')
+                return redirect(url_for('show_specific_url', id=id))
+            except requests.exceptions.RequestException:
+                flash('Произошла ошибка при проверке', 'alert-danger')
+                return redirect(url_for('show_specific_url', id=id))
