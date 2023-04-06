@@ -11,4 +11,6 @@ def get_page_data(url_to_check):
     title = soup.title.text if soup.title else ''
     description = soup.find("meta", attrs={"name": "description"})
     description = description.get("content") if description else ''
+    if len(description) > 255:
+        description = description[:255]
     return status_code, h1, title, description
