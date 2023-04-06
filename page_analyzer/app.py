@@ -6,8 +6,9 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
 from urllib.parse import urlparse
-from page_analyzer.url import validate_url
 import requests
+from page_analyzer.url import validate_url
+from page_analyzer.seo_data_parser import get_page_data
 
 
 app = Flask(__name__)
@@ -40,6 +41,8 @@ def show_urls_list():
             curs.execute("""SELECT
                          urls.id, urls.name,
                          url_checks.status_code,
+                         url_checks.h1, url_checks.title,
+                         url_checks.description,
                          url_checks.created_at
                          FROM urls LEFT JOIN url_checks
                          ON urls.id = url_checks.url_id
@@ -105,17 +108,31 @@ def check_url(id):
         with conn.cursor() as curs:
             try:
                 curs.execute("SELECT name FROM urls WHERE id=(%s);", (id,))
-                url_to_check = curs.fetchone()[0]
-                response = requests.get(url_to_check)
-                response.raise_for_status()
-                status_code = response.status_code
+                url = curs.fetchone()[0]
+                status_code, h1, title, description = get_page_data(url)
                 curs.execute(
                     """
-                    INSERT INTO url_checks (url_id, status_code, created_at)
-                    VALUES (%(url_id)s, %(status_code)s, %(created_at)s);
-                    """,
-                    {'url_id': id, 'status_code': status_code,
-                     'created_at': datetime.now()})
+                    INSERT INTO url_checks (
+                        url_id,
+                        status_code,
+                        h1,
+                        title,
+                        description,
+                        created_at)
+                    VALUES (
+                        %(url_id)s,
+                        %(status_code)s,
+                        %(h1)s,
+                        %(title)s,
+                        %(description)s,
+                        %(created_at)s);""", {
+                        'url_id': id,
+                        'status_code': status_code,
+                        'h1': h1,
+                        'title': title,
+                        'description': description,
+                        'created_at': datetime.now()
+                    })
                 flash('Страница успешно проверена', 'alert-success')
                 return redirect(url_for('show_specific_url', id=id))
             except requests.exceptions.RequestException:
