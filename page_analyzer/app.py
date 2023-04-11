@@ -6,9 +6,8 @@ import psycopg2
 from psycopg2.extras import NamedTupleCursor, RealDictCursor
 from datetime import datetime
 import requests
-from page_analyzer.url import validate_url
+from page_analyzer.url import validate_url, normalize_url
 from page_analyzer.seo_data_parser import get_page_data
-from page_analyzer.url import normalize_url
 
 
 app = Flask(__name__)
