@@ -37,3 +37,14 @@ make dev # see Makefile for details
 ```
 make start # see Makefile for details
 ```
+
+## System requirements
+Python 3.8
+Flask 2.2.3
+PostgreSQL
+gunicorn
+python-dotenv
+psycopg2-binary
+validators
+requests
+beautifulsoup4
