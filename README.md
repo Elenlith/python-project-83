@@ -39,12 +39,14 @@ make start # see Makefile for details
 ```
 
 ## System requirements
-Python 3.8
-Flask 2.2.3
-PostgreSQL
-gunicorn
-python-dotenv
-psycopg2-binary
-validators
-requests
-beautifulsoup4
+<ul>
+<li>Python 3.8</li>
+<li>Flask 2.2.3</li>
+<li>PostgreSQL</li>
+<li>gunicorn</li>
+<li>python-dotenv</li>
+<li>psycopg2-binary</li>
+<li>validators</li>
+<li>requests</li>
+<li>beautifulsoup4</li>
+</ul>
