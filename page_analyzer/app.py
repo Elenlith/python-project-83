@@ -3,12 +3,12 @@ from flask import Flask, render_template, flash, \
     request, redirect, url_for
 from dotenv import load_dotenv
 import psycopg2
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import NamedTupleCursor, RealDictCursor
 from datetime import datetime
-from urllib.parse import urlparse
 import requests
 from page_analyzer.url import validate_url
 from page_analyzer.seo_data_parser import get_page_data
+from page_analyzer.url import normalize_url
 
 
 app = Flask(__name__)
@@ -19,13 +19,8 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
 
 
-def establish_connection():
+def get_connection():
     return psycopg2.connect(DATABASE_URL)
-
-
-def get_domain(raw_url):
-    url = urlparse(raw_url)
-    return f"{url.scheme}://{url.netloc}"
 
 
 @app.route('/')
@@ -35,7 +30,7 @@ def index():
 
 @app.get('/urls')
 def show_urls_list():
-    conn = establish_connection()
+    conn = get_connection()
     with conn:
         with conn.cursor(cursor_factory=RealDictCursor) as curs:
             curs.execute("""SELECT
@@ -57,16 +52,16 @@ def show_urls_list():
 @app.post('/urls')
 def add_url():
     raw_url = request.form.get('url')
-    url = get_domain(raw_url)
+    url = normalize_url(raw_url)
     alerts = validate_url(raw_url)
     if alerts:
         for alert in alerts:
             flash(alert, 'alert-danger')
         return render_template('index.html', url=raw_url), 422
-    conn = establish_connection()
+    conn = get_connection()
     try:
         with conn:
-            with conn.cursor() as curs:
+            with conn.cursor(cursor_factory=NamedTupleCursor) as curs:
                 curs.execute(
                     """
                     INSERT INTO urls (name, created_at)
@@ -74,21 +69,21 @@ def add_url():
                     RETURNING id;
                     """,
                     {'name': url, 'created_at': datetime.now()})
-                id = curs.fetchone()[0]
+                id = curs.fetchone().id
                 flash('Страница успешно добавлена', 'alert-success')
                 return redirect(url_for('show_specific_url', id=id))
     except psycopg2.errors.UniqueViolation:
         with conn:
-            with conn.cursor() as curs:
+            with conn.cursor(cursor_factory=NamedTupleCursor) as curs:
                 curs.execute("SELECT id FROM urls WHERE name=(%s);", (url,))
-                id = curs.fetchone()[0]
+                id = curs.fetchone().id
                 flash('Страница уже существует', 'alert-info')
                 return redirect(url_for('show_specific_url', id=id))
 
 
 @app.get('/urls/<int:id>')
 def show_specific_url(id):
-    conn = establish_connection()
+    conn = get_connection()
     with conn:
         with conn.cursor(cursor_factory=RealDictCursor) as curs:
             curs.execute("SELECT * FROM urls WHERE id=(%s);", (id,))
@@ -103,13 +98,14 @@ def show_specific_url(id):
 
 @app.post('/urls/<int:id>/checks')
 def check_url(id):
-    conn = establish_connection()
+    conn = get_connection()
     with conn:
-        with conn.cursor() as curs:
+        with conn.cursor(cursor_factory=NamedTupleCursor) as curs:
             try:
                 curs.execute("SELECT name FROM urls WHERE id=(%s);", (id,))
-                url = curs.fetchone()[0]
-                status_code, h1, title, description = get_page_data(url)
+                url = curs.fetchone().name
+                response = requests.get(url)
+                status_code, h1, title, description = get_page_data(response)
                 curs.execute(
                     """
                     INSERT INTO url_checks (

@@ -1,9 +1,7 @@
-import requests
 from bs4 import BeautifulSoup
 
 
-def get_page_data(url_to_check):
-    response = requests.get(url_to_check)
+def get_page_data(response):
     response.raise_for_status()
     status_code = response.status_code
     soup = BeautifulSoup(response.text, 'html.parser')

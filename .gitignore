@@ -6,4 +6,4 @@ page_analyzer/__pycache__
 tests/__pycache__
 *.pyc
 dist/
-connection.py
+.connection.py
